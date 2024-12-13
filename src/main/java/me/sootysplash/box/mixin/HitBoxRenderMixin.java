@@ -4,6 +4,8 @@ import me.sootysplash.box.Config;
 import me.sootysplash.box.Main;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -30,8 +32,8 @@ public abstract class HitBoxRenderMixin {
     @Unique private static MatrixStack matrices;
     @Unique private static Entity entity;
     @Unique private static VertexConsumerProvider verticeProvider;
-    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/EntityRenderer;render(Lnet/minecraft/entity/Entity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", shift = At.Shift.AFTER))
-    private void captureArgs(Entity entity, double x, double y, double z, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
+    @Inject(method = "render(Lnet/minecraft/entity/Entity;DDDFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;ILnet/minecraft/client/render/entity/EntityRenderer;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/EntityRenderer;render(Lnet/minecraft/client/render/entity/state/EntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", shift = At.Shift.AFTER))
+    private void captureArgs(Entity entity, double x, double y, double z, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, EntityRenderer<? super Entity, EntityRenderState> renderer, CallbackInfo ci) {
         HitBoxRenderMixin.tickDelta = tickDelta;
         HitBoxRenderMixin.matrices = matrices;
         HitBoxRenderMixin.entity = entity;
@@ -99,7 +101,7 @@ public abstract class HitBoxRenderMixin {
         Box box = entity.getBoundingBox().offset(-entity.getX(), -entity.getY(), -entity.getZ());
 
         Color outer = entity instanceof LivingEntity le && le.hurtTime != 0 && hurtCol ? ifHurt : (targetCol && Main.mc.crosshairTarget instanceof EntityHitResult ehr && ehr.getEntity() == entity ? ifTarget : main);
-        WorldRenderer.drawBox(matrices, vertices, box, outer.getRed() / 255f, outer.getGreen() / 255f, outer.getBlue() / 255f, outer.getAlpha() / 255f);
+        VertexRendering.drawBox(matrices, vertices, box, outer.getRed() / 255f, outer.getGreen() / 255f, outer.getBlue() / 255f, outer.getAlpha() / 255f);
 
 
         renderDragon(entity, matrices, tickDelta, vertices);
@@ -107,14 +109,14 @@ public abstract class HitBoxRenderMixin {
 
         if (entity instanceof LivingEntity && renderEyeHeight) {
             float j = 0.01f;
-            WorldRenderer.drawBox(matrices, vertices, box.minX, entity.getStandingEyeHeight() - j, box.minZ, box.maxX, entity.getStandingEyeHeight() + j, box.maxZ, eyeHeight.getRed() / 255f, eyeHeight.getGreen() / 255f, eyeHeight.getBlue() / 255f, eyeHeight.getAlpha() / 255f);
+            VertexRendering.drawBox(matrices, vertices, box.minX, entity.getStandingEyeHeight() - j, box.minZ, box.maxX, entity.getStandingEyeHeight() + j, box.maxZ, eyeHeight.getRed() / 255f, eyeHeight.getGreen() / 255f, eyeHeight.getBlue() / 255f, eyeHeight.getAlpha() / 255f);
         }
         /*Entity entity2;
         if ((entity2 = entity.getVehicle()) != null) {
             float k = Math.min(entity2.getWidth(), entity.getWidth()) / 2.0f;
             float l = 0.0625f;
             Vec3d vec3d = entity2.getPassengerRidingPos(entity).subtract(entity.getPos());
-            WorldRenderer.drawBox(matrices, vertices, vec3d.x - (double)k, vec3d.y, vec3d.z - (double)k, vec3d.x + (double)k, vec3d.y + l, vec3d.z + (double)k, 1.0f, 1.0f, 0.0f, 1.0f);
+            VertexRendering.drawBox(matrices, vertices, vec3d.x - (double)k, vec3d.y, vec3d.z - (double)k, vec3d.x + (double)k, vec3d.y + l, vec3d.z + (double)k, 1.0f, 1.0f, 0.0f, 1.0f);
         }*/
         if (renderLookDir) {
             Vec3d vec3d2 = entity.getRotationVec(tickDelta);
@@ -138,7 +140,7 @@ public abstract class HitBoxRenderMixin {
                 double h = e + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderY, enderDragonPart.getY());
                 double i = f + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderZ, enderDragonPart.getZ());
                 matrices.translate(g, h, i);
-                WorldRenderer.drawBox(matrices, vertices, enderDragonPart.getBoundingBox().offset(-enderDragonPart.getX(), -enderDragonPart.getY(), -enderDragonPart.getZ()), 0.25f, 1.0f, 0.0f, 1.0f);
+                VertexRendering.drawBox(matrices, vertices, enderDragonPart.getBoundingBox().offset(-enderDragonPart.getX(), -enderDragonPart.getY(), -enderDragonPart.getZ()), 0.25f, 1.0f, 0.0f, 1.0f);
                 matrices.pop();
             }
         }
