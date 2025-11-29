@@ -1,12 +1,12 @@
 package me.sootysplash.box.mixin;
 
 import me.sootysplash.box.Config;
+import me.sootysplash.box.EntityRenderStateAccessor;
 import me.sootysplash.box.Main;
 import net.minecraft.client.render.*;
-import net.minecraft.client.render.entity.EntityRenderDispatcher;
-import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.command.DebugHitboxCommandRenderer;
+import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.entity.state.EntityHitboxAndView;
-import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -22,24 +22,28 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.awt.*;
 
 
-@Mixin(EntityRenderDispatcher.class)
+@Mixin(DebugHitboxCommandRenderer.class)
 public abstract class HitBoxRenderMixin {
-    @Unique private static float tickDelta;
     @Unique private static Entity renderEntity;
 
-    @Inject(method = "render(Lnet/minecraft/entity/Entity;DDDFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;ILnet/minecraft/client/render/entity/EntityRenderer;)V",
-            at = @At("HEAD"))
-    private void dataHook(Entity entity, double x, double y, double z, float tickProgress, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, EntityRenderer<? super Entity, EntityRenderState> renderer, CallbackInfo ci) {
-        renderEntity = entity;
-        tickDelta = Main.mc.getRenderTickCounter().getTickProgress(false);
+    @ModifyVariable(method = "render",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/render/command/DebugHitboxCommandRenderer;renderDebugHitbox(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/entity/state/EntityHitboxAndView;Lnet/minecraft/client/render/VertexConsumer;F)V"
+            ),
+            argsOnly = false,
+            index = 4)
+    private OrderedRenderCommandQueueImpl.DebugHitboxCommand captureState(OrderedRenderCommandQueueImpl.DebugHitboxCommand value) {
+        renderEntity = ((EntityRenderStateAccessor) value.renderState()).getEntityOverride_combat_hitboxes();
+        return value;
     }
 
-    @Inject(method = "renderHitboxes(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/entity/state/EntityHitboxAndView;Lnet/minecraft/client/render/VertexConsumer;F)V",
+    @Inject(method = "renderDebugHitbox(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/entity/state/EntityHitboxAndView;Lnet/minecraft/client/render/VertexConsumer;F)V",
             at = @At("HEAD"), cancellable = true)
     private static void hitBoxHook(MatrixStack matrices, EntityHitboxAndView hitbox, VertexConsumer vertexConsumer, float standingEyeHeight, CallbackInfo ci) {
         Config config = Config.getInstance();
@@ -48,6 +52,7 @@ public abstract class HitBoxRenderMixin {
         }
         ci.cancel();
 
+        float tickDelta = Main.mc.getRenderTickCounter().getTickProgress(false);
         Main.lineWidth = Main.mc.player != null && Main.mc.player.distanceTo(renderEntity) > config.distFor2 ? config.line2 : config.line1;
 
 
@@ -85,7 +90,7 @@ public abstract class HitBoxRenderMixin {
         Box box = entity.getBoundingBox().offset(-entity.getX(), -entity.getY(), -entity.getZ());
 
         Color outer = entity instanceof LivingEntity le && le.hurtTime != 0 && hurtCol ? ifHurt : (targetCol && Main.mc.crosshairTarget instanceof EntityHitResult ehr && ehr.getEntity() == entity ? ifTarget : main);
-        VertexRendering.drawBox(matrices, vertices, box, outer.getRed() / 255f, outer.getGreen() / 255f, outer.getBlue() / 255f, outer.getAlpha() / 255f);
+        VertexRendering.drawBox(matrices.peek(), vertices, box, outer.getRed() / 255f, outer.getGreen() / 255f, outer.getBlue() / 255f, outer.getAlpha() / 255f);
 
 
         renderDragon(entity, matrices, tickDelta, vertices);
@@ -93,14 +98,14 @@ public abstract class HitBoxRenderMixin {
 
         if (entity instanceof LivingEntity && renderEyeHeight) {
             float j = 0.01f;
-            VertexRendering.drawBox(matrices, vertices, box.minX, entity.getStandingEyeHeight() - j, box.minZ, box.maxX, entity.getStandingEyeHeight() + j, box.maxZ, eyeHeight.getRed() / 255f, eyeHeight.getGreen() / 255f, eyeHeight.getBlue() / 255f, eyeHeight.getAlpha() / 255f);
+            VertexRendering.drawBox(matrices.peek(), vertices, box.minX, entity.getStandingEyeHeight() - j, box.minZ, box.maxX, entity.getStandingEyeHeight() + j, box.maxZ, eyeHeight.getRed() / 255f, eyeHeight.getGreen() / 255f, eyeHeight.getBlue() / 255f, eyeHeight.getAlpha() / 255f);
         }
         Entity entity2;
         if ((entity2 = entity.getVehicle()) != null) {
             float k = Math.min(entity2.getWidth(), entity.getWidth()) / 2.0f;
             float l = 0.0625f;
-            Vec3d vec3d = entity2.getPassengerRidingPos(entity).subtract(entity.getPos());
-            VertexRendering.drawBox(matrices, vertices, vec3d.x - (double)k, vec3d.y, vec3d.z - (double)k, vec3d.x + (double)k, vec3d.y + l, vec3d.z + (double)k, 1.0f, 1.0f, 0.0f, 1.0f);
+            Vec3d vec3d = entity2.getPassengerRidingPos(entity).subtract(entity.getEntityPos());
+            VertexRendering.drawBox(matrices.peek(), vertices, vec3d.x - (double)k, vec3d.y, vec3d.z - (double)k, vec3d.x + (double)k, vec3d.y + l, vec3d.z + (double)k, 1.0f, 1.0f, 0.0f, 1.0f);
         }
         if (renderLookDir) {
             Vec3d vec3d2 = entity.getRotationVec(tickDelta);
@@ -124,7 +129,7 @@ public abstract class HitBoxRenderMixin {
                 double h = e + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderY, enderDragonPart.getY());
                 double i = f + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderZ, enderDragonPart.getZ());
                 matrices.translate(g, h, i);
-                VertexRendering.drawBox(matrices, vertices, enderDragonPart.getBoundingBox().offset(-enderDragonPart.getX(), -enderDragonPart.getY(), -enderDragonPart.getZ()), 0.25f, 1.0f, 0.0f, 1.0f);
+                VertexRendering.drawBox(matrices.peek(), vertices, enderDragonPart.getBoundingBox().offset(-enderDragonPart.getX(), -enderDragonPart.getY(), -enderDragonPart.getZ()), 0.25f, 1.0f, 0.0f, 1.0f);
                 matrices.pop();
             }
         }

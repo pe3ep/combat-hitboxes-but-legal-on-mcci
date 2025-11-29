@@ -6,6 +6,8 @@
     "defaultRequire": 1
   },
   "client": [
+    "EntityRendererMixin",
+    "EntityRenderStateMixin",
     "HitBoxRenderMixin",
     "LineSizeMixin",
     "StuckArrowMixin",
