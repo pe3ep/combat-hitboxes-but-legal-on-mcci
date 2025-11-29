@@ -5,6 +5,7 @@ import me.sootysplash.box.Main;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.state.EntityHitboxAndView;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
@@ -29,42 +30,25 @@ import java.awt.*;
 @Mixin(EntityRenderDispatcher.class)
 public abstract class HitBoxRenderMixin {
     @Unique private static float tickDelta;
-    @Unique private static MatrixStack matrices;
-    @Unique private static Entity entity;
-    @Unique private static VertexConsumerProvider verticeProvider;
-    @Inject(method = "render(Lnet/minecraft/entity/Entity;DDDFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;ILnet/minecraft/client/render/entity/EntityRenderer;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/EntityRenderer;render(Lnet/minecraft/client/render/entity/state/EntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", shift = At.Shift.AFTER))
-    private void captureArgs(Entity entity, double x, double y, double z, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, EntityRenderer<? super Entity, EntityRenderState> renderer, CallbackInfo ci) {
-        HitBoxRenderMixin.tickDelta = tickDelta;
-        HitBoxRenderMixin.matrices = matrices;
-        HitBoxRenderMixin.entity = entity;
-        HitBoxRenderMixin.verticeProvider = vertexConsumers;
+    @Unique private static Entity renderEntity;
+
+    @Inject(method = "render(Lnet/minecraft/entity/Entity;DDDFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;ILnet/minecraft/client/render/entity/EntityRenderer;)V",
+            at = @At("HEAD"))
+    private void dataHook(Entity entity, double x, double y, double z, float tickProgress, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, EntityRenderer<? super Entity, EntityRenderState> renderer, CallbackInfo ci) {
+        renderEntity = entity;
+        tickDelta = Main.mc.getRenderTickCounter().getTickProgress(false);
     }
 
-    @Inject(method = "renderHitbox", at = @At("HEAD"), cancellable = true)
-    private static void hitBoxHook(CallbackInfo ci) {
+    @Inject(method = "renderHitboxes(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/entity/state/EntityHitboxAndView;Lnet/minecraft/client/render/VertexConsumer;F)V",
+            at = @At("HEAD"), cancellable = true)
+    private static void hitBoxHook(MatrixStack matrices, EntityHitboxAndView hitbox, VertexConsumer vertexConsumer, float standingEyeHeight, CallbackInfo ci) {
         Config config = Config.getInstance();
-        ci.cancel();
-
-        VertexConsumer vertices = verticeProvider.getBuffer(RenderLayer.getLines());
-
         if (!config.enabled) {
-            renderBox(matrices,
-                    vertices,
-                    entity,
-                    tickDelta,
-                    Color.RED,
-                    Color.BLUE,
-                    Color.WHITE,
-                    Color.WHITE,
-                    Color.PINK,
-                    false,
-                    false,
-                    true,
-                    true);
             return;
         }
+        ci.cancel();
 
-        Main.lineWidth = Main.mc.player != null && Main.mc.player.distanceTo(entity) > config.distFor2 ? config.line2 : config.line1;
+        Main.lineWidth = Main.mc.player != null && Main.mc.player.distanceTo(renderEntity) > config.distFor2 ? config.line2 : config.line1;
 
 
         VertexConsumerProvider.Immediate imm = Main.mc.getBufferBuilders().getEntityVertexConsumers();
@@ -72,8 +56,8 @@ public abstract class HitBoxRenderMixin {
 
 
         renderBox(matrices,
-                vertices,
-                entity,
+                vertexConsumer,
+                renderEntity,
                 tickDelta,
                 new Color(config.eyeColor, true),
                 new Color(config.lookColor, true),
@@ -111,13 +95,13 @@ public abstract class HitBoxRenderMixin {
             float j = 0.01f;
             VertexRendering.drawBox(matrices, vertices, box.minX, entity.getStandingEyeHeight() - j, box.minZ, box.maxX, entity.getStandingEyeHeight() + j, box.maxZ, eyeHeight.getRed() / 255f, eyeHeight.getGreen() / 255f, eyeHeight.getBlue() / 255f, eyeHeight.getAlpha() / 255f);
         }
-        /*Entity entity2;
+        Entity entity2;
         if ((entity2 = entity.getVehicle()) != null) {
             float k = Math.min(entity2.getWidth(), entity.getWidth()) / 2.0f;
             float l = 0.0625f;
             Vec3d vec3d = entity2.getPassengerRidingPos(entity).subtract(entity.getPos());
             VertexRendering.drawBox(matrices, vertices, vec3d.x - (double)k, vec3d.y, vec3d.z - (double)k, vec3d.x + (double)k, vec3d.y + l, vec3d.z + (double)k, 1.0f, 1.0f, 0.0f, 1.0f);
-        }*/
+        }
         if (renderLookDir) {
             Vec3d vec3d2 = entity.getRotationVec(tickDelta);
             Matrix4f matrix4f = matrices.peek().getPositionMatrix();
