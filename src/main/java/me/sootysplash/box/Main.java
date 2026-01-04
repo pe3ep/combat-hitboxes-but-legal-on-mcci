@@ -10,16 +10,11 @@ import org.slf4j.LoggerFactory;
 public class Main implements ModInitializer {
     public static MinecraftClient mc = MinecraftClient.getInstance();
     public static final Logger LOGGER = LoggerFactory.getLogger("CombatHitboxes");
-    public static float lineWidth = 2.5f;
 
     @Override
     public void onInitialize() {
         AutoConfig.register(Config.class, GsonConfigSerializer::new);
         LOGGER.info("CombatHitboxes | Sootysplash was here!");
-    }
-
-    public static float getVanillaWidth() {
-        return Math.max(2.5f, (float)MinecraftClient.getInstance().getWindow().getFramebufferWidth() / 1920.0f * 2.5f);
     }
 
 }

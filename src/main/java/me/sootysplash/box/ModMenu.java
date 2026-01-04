@@ -65,6 +65,12 @@ public class ModMenu implements ModMenuApi {
                     .setSaveConsumer(newValue -> config.hideArrow = newValue)
                     .build());
 
+            behavior.addEntry(cfgent.startBooleanToggle(Text.of("Line Look Direction"), config.lineLookDir)
+                    .setDefaultValue(true)
+                    .setTooltip(Text.of("Instead of the new arrow, draw the entity's look direction as a line"))
+                    .setSaveConsumer(newValue -> config.lineLookDir = newValue)
+                    .build());
+
 
 
             ConfigCategory colors = builder.getOrCreateCategory(Text.of("Colors"));

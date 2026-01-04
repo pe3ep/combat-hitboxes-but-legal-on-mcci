@@ -29,6 +29,7 @@ public class Config implements ConfigData {
     public boolean hitBoxHurt = false;
     public boolean renderEyeHeight = true;
     public boolean renderLookDir = true;
+    public boolean lineLookDir = true;
     public int hurtBoxColor = Color.MAGENTA.getRGB();
     public float line1 = 2.5f;
     public double distFor2 = 32;
