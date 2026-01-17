@@ -8,6 +8,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonPart;
+import net.minecraft.entity.projectile.FireworkRocketEntity;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ColorHelper;
@@ -35,6 +36,9 @@ public abstract class HitBoxRenderMixin {
             return;
         }
         ci.cancel();
+        if (config.hideFireworks && entity instanceof FireworkRocketEntity) {
+            return;
+        }
 
         float lineWidth = Main.mc.player != null && Main.mc.player.distanceTo(entity) > config.distFor2 ? config.line2 : config.line1;
 
@@ -44,20 +48,39 @@ public abstract class HitBoxRenderMixin {
                 new Color(config.hitBoxColor, true),
                 new Color(config.targetBoxColor, true),
                 new Color(config.hurtBoxColor, true),
+                new Color(config.outlineColor, true),
                 config.changeTargetColor,
                 config.hitBoxHurt,
                 config.renderEyeHeight,
                 config.renderLookDir,
-                config.lineLookDir);
+                config.lineLookDir,
+                config.outlineEnabled,
+                config.outlineMultiplier);
     }
 
     @Unique
-    private static void render_1_21_1_boxes(float lineWidth, Entity entity, float tickProgress, Color eyeHeight, Color lookDir, Color main, Color ifTarget, Color ifHurt, boolean targetCol, boolean hurtCol, boolean renderEyeHeight, boolean renderLookDir, boolean lineLookDir) {
+    private static void render_1_21_1_boxes(float lineWidth, Entity entity, float tickProgress,
+                                            Color eyeHeight,
+                                            Color lookDir,
+                                            Color main,
+                                            Color ifTarget,
+                                            Color ifHurt,
+                                            Color outlineColor,
+                                            boolean targetCol,
+                                            boolean hurtCol,
+                                            boolean renderEyeHeight,
+                                            boolean renderLookDir,
+                                            boolean lineLookDir,
+                                            boolean outlineEnabled,
+                                            float outlineMultiplier) {
         Vec3d vec3d = entity.getEntityPos();
         Vec3d vec3d2 = entity.getLerpedPos(tickProgress);
         Vec3d vec3d3 = vec3d2.subtract(vec3d);
         Color outer = entity instanceof LivingEntity le && le.hurtTime != 0 && hurtCol ? ifHurt : (targetCol && Main.mc.crosshairTarget instanceof EntityHitResult ehr && ehr.getEntity() == entity ? ifTarget : main);
         int i = outer.getRGB();
+        if (outlineEnabled) {
+            GizmoDrawing.box(entity.getBoundingBox().offset(vec3d3), DrawStyle.stroked(outlineColor.getRGB(), lineWidth * outlineMultiplier));
+        }
         GizmoDrawing.box(entity.getBoundingBox().offset(vec3d3), DrawStyle.stroked(i, lineWidth));
         GizmoDrawing.point(vec3d2, i, 2.0F);
         Entity entity2 = entity.getVehicle();

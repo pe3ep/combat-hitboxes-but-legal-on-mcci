@@ -20,8 +20,8 @@ public class ModMenu implements ModMenuApi {
                     .setTitle(Text.of("Config"))
                     .setSavingRunnable(config::save);
 
-            ConfigCategory behavior = builder.getOrCreateCategory(Text.of("Behavior"));
             ConfigEntryBuilder cfgent = builder.entryBuilder();
+            ConfigCategory behavior = builder.getOrCreateCategory(Text.of("Behavior"));
 
 
             behavior.addEntry(cfgent.startBooleanToggle(Text.of("Enabled"), config.enabled)
@@ -63,6 +63,12 @@ public class ModMenu implements ModMenuApi {
                     .setDefaultValue(false)
                     .setTooltip(Text.of("Removes bee stingers and arrows visually from other players"))
                     .setSaveConsumer(newValue -> config.hideArrow = newValue)
+                    .build());
+
+            behavior.addEntry(cfgent.startBooleanToggle(Text.of("Hide Fireworks"), config.hideFireworks)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.of("Skips rendering hitboxes for fireworks"))
+                    .setSaveConsumer(newValue -> config.hideFireworks = newValue)
                     .build());
 
             behavior.addEntry(cfgent.startBooleanToggle(Text.of("Line Look Direction"), config.lineLookDir)
@@ -138,6 +144,27 @@ public class ModMenu implements ModMenuApi {
                     .setSaveConsumer(newValue -> config.line2 = newValue)
                     .build());
 
+            ConfigCategory outline = builder.getOrCreateCategory(Text.of("Outline"));
+
+            outline.addEntry(cfgent.startBooleanToggle(Text.of("Outline Enabled"), config.outlineEnabled)
+                    .setDefaultValue(false)
+                    .setTooltip(Text.of("Enable hitbox outlines"))
+                    .setSaveConsumer(newValue -> config.outlineEnabled = newValue)
+                    .build());
+
+            outline.addEntry(cfgent.startAlphaColorField(Text.of("Outline Color"), config.outlineColor)
+                    .setDefaultValue(Color.BLACK.getRGB())
+                    .setTooltip(Text.of("The hitbox's outline color"))
+                    .setSaveConsumer(newValue -> config.outlineColor = newValue)
+                    .build());
+
+            outline.addEntry(cfgent.startFloatField(Text.of("Outline Size Multiplier"), config.outlineMultiplier)
+                    .setDefaultValue(2)
+                    .setMin(Math.nextUp(1))
+                    .setMax(10F)
+                    .setTooltip(Text.of("How much the hitbox's line width will be multiplied by for the outline"))
+                    .setSaveConsumer(newValue -> config.outlineMultiplier = newValue)
+                    .build());
 
             return builder.build();
         };
