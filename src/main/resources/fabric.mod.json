@@ -2,10 +2,11 @@
 	"schemaVersion": 1,
 	"id": "combat-hitboxes",
 	"version": "${version}",
-	"name": "Combat Hitboxes",
-	"description": "Modifies hitbox rendering to aid with attack timing and gauging your reach visually.",
+	"name": "Combat Hitboxes But Legal On MCCI",
+	"description": "Modifies hitbox rendering to aid with attack timing and gauging your reach visually. Edited to not break the rules of MCC Island",
 	"authors": [
-		"Sootysplash"
+		"Sootysplash",
+		"Pe3ep (very slight edit to the original, full credit to Sootysplash)"
 	],
 	"license": "Apache-2.0",
 	"icon": "assets/template-mod/icon.png",
