@@ -21,6 +21,7 @@ public class Config implements ConfigData {
 
     public boolean enabled = true;
     public boolean hideArrow = false;
+    public boolean hideFireworks = true;
     public boolean changeTargetColor = true;
     public int eyeColor = Color.RED.getRGB();
     public int lookColor = Color.BLUE.getRGB();
@@ -29,10 +30,14 @@ public class Config implements ConfigData {
     public boolean hitBoxHurt = false;
     public boolean renderEyeHeight = true;
     public boolean renderLookDir = true;
+    public boolean lineLookDir = true;
     public int hurtBoxColor = Color.MAGENTA.getRGB();
     public float line1 = 2.5f;
     public double distFor2 = 32;
     public float line2 = 2.5f;
+    public boolean outlineEnabled = false;
+    public int outlineColor = Color.BLACK.getRGB();
+    public float outlineMultiplier = 2;
 
     public void save() {
         try {

@@ -7,7 +7,6 @@
   },
   "client": [
     "HitBoxRenderMixin",
-    "LineSizeMixin",
     "StuckArrowMixin",
     "StuckStingerMixin"
   ]

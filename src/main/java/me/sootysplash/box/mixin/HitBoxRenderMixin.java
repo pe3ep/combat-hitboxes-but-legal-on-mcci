@@ -3,18 +3,17 @@ package me.sootysplash.box.mixin;
 import me.sootysplash.box.Config;
 import me.sootysplash.box.Main;
 import net.minecraft.client.render.*;
-import net.minecraft.client.render.entity.EntityRenderDispatcher;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.debug.EntityHitboxDebugRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonPart;
+import net.minecraft.entity.projectile.FireworkRocketEntity;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.Vec3d;
-import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.world.debug.gizmo.GizmoDrawing;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,122 +23,99 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.awt.*;
 
 
-@Mixin(EntityRenderDispatcher.class)
+@Mixin(EntityHitboxDebugRenderer.class)
 public abstract class HitBoxRenderMixin {
-    @Unique private static float tickDelta;
-    @Unique private static MatrixStack matrices;
-    @Unique private static Entity entity;
-    @Unique private static VertexConsumerProvider verticeProvider;
-    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/EntityRenderer;render(Lnet/minecraft/entity/Entity;FFLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", shift = At.Shift.AFTER))
-    private void captureArgs(Entity entity, double x, double y, double z, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        HitBoxRenderMixin.tickDelta = tickDelta;
-        HitBoxRenderMixin.matrices = matrices;
-        HitBoxRenderMixin.entity = entity;
-        HitBoxRenderMixin.verticeProvider = vertexConsumers;
-    }
 
-    @Inject(method = "renderHitbox", at = @At("HEAD"), cancellable = true)
-    private static void hitBoxHook(CallbackInfo ci) {
+    @Inject(method = "drawHitbox", at = @At("HEAD"), cancellable = true)
+    private void onDrawHitbox(Entity entity, float tickProgress, boolean inLocalServer, CallbackInfo ci) {
+        if (inLocalServer) {// they want to debug, let them
+            return;
+        }
         Config config = Config.getInstance();
-        ci.cancel();
-
-        VertexConsumer vertices = verticeProvider.getBuffer(RenderLayer.getLines());
-
         if (!config.enabled) {
-            renderBox(matrices,
-                    vertices,
-                    entity,
-                    tickDelta,
-                    Color.RED,
-                    Color.BLUE,
-                    Color.WHITE,
-                    Color.WHITE,
-                    Color.PINK,
-                    false,
-                    false,
-                    true,
-                    true);
+            return;
+        }
+        ci.cancel();
+        if (config.hideFireworks && entity instanceof FireworkRocketEntity) {
             return;
         }
 
-        Main.lineWidth = Main.mc.player != null && Main.mc.player.distanceTo(entity) > config.distFor2 ? config.line2 : config.line1;
+        float lineWidth = Main.mc.player != null && Main.mc.player.distanceTo(entity) > config.distFor2 ? config.line2 : config.line1;
 
-
-        VertexConsumerProvider.Immediate imm = Main.mc.getBufferBuilders().getEntityVertexConsumers();
-
-
-
-        renderBox(matrices,
-                vertices,
-                entity,
-                tickDelta,
+        render_1_21_1_boxes(lineWidth, entity, tickProgress,
                 new Color(config.eyeColor, true),
                 new Color(config.lookColor, true),
                 new Color(config.hitBoxColor, true),
                 new Color(config.targetBoxColor, true),
                 new Color(config.hurtBoxColor, true),
+                new Color(config.outlineColor, true),
                 config.changeTargetColor,
                 config.hitBoxHurt,
                 config.renderEyeHeight,
-                config.renderLookDir);
-
-
-
-        GL11.glEnable(GL11.GL_LINE_SMOOTH);
-
-        imm.draw();
-
-        GL11.glDisable(GL11.GL_LINE_SMOOTH);
-
-        Main.lineWidth = Main.getVanillaWidth();
-
+                config.renderLookDir,
+                config.lineLookDir,
+                config.outlineEnabled,
+                config.outlineMultiplier);
     }
+
     @Unique
-    private static void renderBox(MatrixStack matrices, VertexConsumer vertices, Entity entity, float tickDelta, Color eyeHeight, Color lookDir, Color main, Color ifTarget, Color ifHurt, boolean targetCol, boolean hurtCol, boolean renderEyeHeight, boolean renderLookDir) {
-        Box box = entity.getBoundingBox().offset(-entity.getX(), -entity.getY(), -entity.getZ());
-
+    private static void render_1_21_1_boxes(float lineWidth, Entity entity, float tickProgress,
+                                            Color eyeHeight,
+                                            Color lookDir,
+                                            Color main,
+                                            Color ifTarget,
+                                            Color ifHurt,
+                                            Color outlineColor,
+                                            boolean targetCol,
+                                            boolean hurtCol,
+                                            boolean renderEyeHeight,
+                                            boolean renderLookDir,
+                                            boolean lineLookDir,
+                                            boolean outlineEnabled,
+                                            float outlineMultiplier) {
+        Vec3d vec3d = entity.getEntityPos();
+        Vec3d vec3d2 = entity.getLerpedPos(tickProgress);
+        Vec3d vec3d3 = vec3d2.subtract(vec3d);
         Color outer = entity instanceof LivingEntity le && le.hurtTime != 0 && hurtCol ? ifHurt : (targetCol && Main.mc.crosshairTarget instanceof EntityHitResult ehr && ehr.getEntity() == entity ? ifTarget : main);
-        WorldRenderer.drawBox(matrices, vertices, box, outer.getRed() / 255f, outer.getGreen() / 255f, outer.getBlue() / 255f, outer.getAlpha() / 255f);
-
-
-        renderDragon(entity, matrices, tickDelta, vertices);
-
+        int i = outer.getRGB();
+        if (outlineEnabled) {
+            GizmoDrawing.box(entity.getBoundingBox().offset(vec3d3), DrawStyle.stroked(outlineColor.getRGB(), lineWidth * outlineMultiplier));
+        }
+        GizmoDrawing.box(entity.getBoundingBox().offset(vec3d3), DrawStyle.stroked(i, lineWidth));
+        GizmoDrawing.point(vec3d2, i, 2.0F);
+        Entity entity2 = entity.getVehicle();
+        if (entity2 != null) {
+            float f = Math.min(entity2.getWidth(), entity.getWidth()) / 2.0F;
+            float g = 0.0625F;
+            Vec3d vec3d4 = entity2.getPassengerRidingPos(entity).add(vec3d3);
+            GizmoDrawing.box(new Box(vec3d4.x - f, vec3d4.y, vec3d4.z - f, vec3d4.x + f, vec3d4.y + 0.0625, vec3d4.z + f), DrawStyle.stroked(-256, lineWidth));
+        }
 
         if (entity instanceof LivingEntity && renderEyeHeight) {
-            float j = 0.01f;
-            WorldRenderer.drawBox(matrices, vertices, box.minX, entity.getStandingEyeHeight() - j, box.minZ, box.maxX, entity.getStandingEyeHeight() + j, box.maxZ, eyeHeight.getRed() / 255f, eyeHeight.getGreen() / 255f, eyeHeight.getBlue() / 255f, eyeHeight.getAlpha() / 255f);
+            Box box = entity.getBoundingBox().offset(vec3d3);
+            float g = 0.01F;
+            GizmoDrawing.box(
+                    new Box(box.minX, box.minY + entity.getStandingEyeHeight() - 0.01F, box.minZ, box.maxX, box.minY + entity.getStandingEyeHeight() + 0.01F, box.maxZ),
+                    DrawStyle.stroked(eyeHeight.getRGB(), lineWidth)
+            );
         }
-        /*Entity entity2;
-        if ((entity2 = entity.getVehicle()) != null) {
-            float k = Math.min(entity2.getWidth(), entity.getWidth()) / 2.0f;
-            float l = 0.0625f;
-            Vec3d vec3d = entity2.getPassengerRidingPos(entity).subtract(entity.getPos());
-            WorldRenderer.drawBox(matrices, vertices, vec3d.x - (double)k, vec3d.y, vec3d.z - (double)k, vec3d.x + (double)k, vec3d.y + l, vec3d.z + (double)k, 1.0f, 1.0f, 0.0f, 1.0f);
-        }*/
+
+        if (entity instanceof EnderDragonEntity enderDragonEntity) {
+            for (EnderDragonPart enderDragonPart : enderDragonEntity.getBodyParts()) {
+                Vec3d vec3d5 = enderDragonPart.getEntityPos();
+                Vec3d vec3d6 = enderDragonPart.getLerpedPos(tickProgress);
+                Vec3d vec3d7 = vec3d6.subtract(vec3d5);
+                GizmoDrawing.box(enderDragonPart.getBoundingBox().offset(vec3d7), DrawStyle.stroked(ColorHelper.fromFloats(1.0F, 0.25F, 1.0F, 0.0F)));
+            }
+        }
+
+        Vec3d vec3d8 = vec3d2.add(0.0, entity.getStandingEyeHeight(), 0.0);
+        Vec3d vec3d9 = entity.getRotationVec(tickProgress);
         if (renderLookDir) {
-            Vec3d vec3d2 = entity.getRotationVec(tickDelta);
-            Matrix4f matrix4f = matrices.peek().getPositionMatrix();
-            MatrixStack.Entry matrix3f = matrices.peek();
-
-            vertices.vertex(matrix4f, 0.0f, entity.getStandingEyeHeight(), 0.0f).color(lookDir.getRed(), lookDir.getGreen(), lookDir.getBlue(), lookDir.getAlpha()).normal(matrix3f.getNormalMatrix(), (float) vec3d2.x, (float) vec3d2.y, (float) vec3d2.z).next();
-            vertices.vertex(matrix4f, (float) (vec3d2.x * 2.0), (float) ((double) entity.getStandingEyeHeight() + vec3d2.y * 2.0), (float) (vec3d2.z * 2.0)).color(lookDir.getRed(), lookDir.getGreen(), lookDir.getBlue(), lookDir.getAlpha()).normal(matrix3f.getNormalMatrix(), (float) vec3d2.x, (float) vec3d2.y, (float) vec3d2.z).next();
-        }
-    }
-
-    @Unique
-    private static void renderDragon(Entity entity, MatrixStack matrices, float tickDelta, VertexConsumer vertices) {
-        if (entity instanceof EnderDragonEntity) {
-            double d = -MathHelper.lerp(tickDelta, entity.lastRenderX, entity.getX());
-            double e = -MathHelper.lerp(tickDelta, entity.lastRenderY, entity.getY());
-            double f = -MathHelper.lerp(tickDelta, entity.lastRenderZ, entity.getZ());
-            for (EnderDragonPart enderDragonPart : ((EnderDragonEntity)entity).getBodyParts()) {
-                matrices.push();
-                double g = d + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderX, enderDragonPart.getX());
-                double h = e + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderY, enderDragonPart.getY());
-                double i = f + MathHelper.lerp(tickDelta, enderDragonPart.lastRenderZ, enderDragonPart.getZ());
-                matrices.translate(g, h, i);
-                WorldRenderer.drawBox(matrices, vertices, enderDragonPart.getBoundingBox().offset(-enderDragonPart.getX(), -enderDragonPart.getY(), -enderDragonPart.getZ()), 0.25f, 1.0f, 0.0f, 1.0f);
-                matrices.pop();
+            if (lineLookDir) {
+                GizmoDrawing.line(vec3d8, vec3d8.add(vec3d9.multiply(2.0)), lookDir.getRGB(), lineWidth);
+            } else {
+                GizmoDrawing.arrow(vec3d8, vec3d8.add(vec3d9.multiply(2.0)), lookDir.getRGB(), lineWidth);
             }
         }
     }
