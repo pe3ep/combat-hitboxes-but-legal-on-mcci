@@ -20,13 +20,10 @@ public class Config implements ConfigData {
     private static Config instance;
 
     public boolean enabled = true;
-    public boolean hideArrow = false;
     public boolean hideFireworks = true;
-    public boolean changeTargetColor = true;
     public int eyeColor = Color.RED.getRGB();
     public int lookColor = Color.BLUE.getRGB();
     public int hitBoxColor = Color.WHITE.getRGB();
-    public int targetBoxColor = Color.RED.getRGB();
     public boolean hitBoxHurt = false;
     public boolean renderEyeHeight = true;
     public boolean renderLookDir = true;

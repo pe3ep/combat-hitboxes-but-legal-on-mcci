@@ -45,26 +45,12 @@ public class ModMenu implements ModMenuApi {
                     .build());
 
 
-            behavior.addEntry(cfgent.startBooleanToggle(Text.of("Target HitBox Color"), config.changeTargetColor)
-                    .setDefaultValue(true)
-                    .setTooltip(Text.of("Target hitbox color on targets?"))
-                    .setSaveConsumer(newValue -> config.changeTargetColor = newValue)
-                    .build());
-
-
             behavior.addEntry(cfgent.startBooleanToggle(Text.of("HitBox Hurt"), config.hitBoxHurt)
                     .setDefaultValue(false)
                     .setTooltip(Text.of("Hitbox hurt color when hurt?"))
                     .setSaveConsumer(newValue -> config.hitBoxHurt = newValue)
                     .build());
-
-
-            behavior.addEntry(cfgent.startBooleanToggle(Text.of("Hide Stuck Arrows"), config.hideArrow)
-                    .setDefaultValue(false)
-                    .setTooltip(Text.of("Removes bee stingers and arrows visually from other players"))
-                    .setSaveConsumer(newValue -> config.hideArrow = newValue)
-                    .build());
-
+            
             behavior.addEntry(cfgent.startBooleanToggle(Text.of("Hide Fireworks"), config.hideFireworks)
                     .setDefaultValue(false)
                     .setTooltip(Text.of("Skips rendering hitboxes for fireworks"))
@@ -101,14 +87,6 @@ public class ModMenu implements ModMenuApi {
                     .setTooltip(Text.of("The hitbox's look direction color"))
                     .setSaveConsumer(newValue -> config.lookColor = newValue)
                     .build());
-
-
-            colors.addEntry(cfgent.startAlphaColorField(Text.of("Target Color"), config.targetBoxColor)
-                    .setDefaultValue(Color.RED.getRGB())
-                    .setTooltip(Text.of("The hitbox color when the entity is targeted"))
-                    .setSaveConsumer(newValue -> config.targetBoxColor = newValue)
-                    .build());
-
 
             colors.addEntry(cfgent.startAlphaColorField(Text.of("Hurt Color"), config.hurtBoxColor)
                     .setDefaultValue(Color.MAGENTA.getRGB())

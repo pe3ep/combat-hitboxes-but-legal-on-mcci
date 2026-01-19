@@ -9,7 +9,6 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonPart;
 import net.minecraft.entity.projectile.FireworkRocketEntity;
-import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.Vec3d;
@@ -46,10 +45,8 @@ public abstract class HitBoxRenderMixin {
                 new Color(config.eyeColor, true),
                 new Color(config.lookColor, true),
                 new Color(config.hitBoxColor, true),
-                new Color(config.targetBoxColor, true),
                 new Color(config.hurtBoxColor, true),
                 new Color(config.outlineColor, true),
-                config.changeTargetColor,
                 config.hitBoxHurt,
                 config.renderEyeHeight,
                 config.renderLookDir,
@@ -63,10 +60,8 @@ public abstract class HitBoxRenderMixin {
                                             Color eyeHeight,
                                             Color lookDir,
                                             Color main,
-                                            Color ifTarget,
                                             Color ifHurt,
                                             Color outlineColor,
-                                            boolean targetCol,
                                             boolean hurtCol,
                                             boolean renderEyeHeight,
                                             boolean renderLookDir,
@@ -76,7 +71,7 @@ public abstract class HitBoxRenderMixin {
         Vec3d vec3d = entity.getEntityPos();
         Vec3d vec3d2 = entity.getLerpedPos(tickProgress);
         Vec3d vec3d3 = vec3d2.subtract(vec3d);
-        Color outer = entity instanceof LivingEntity le && le.hurtTime != 0 && hurtCol ? ifHurt : (targetCol && Main.mc.crosshairTarget instanceof EntityHitResult ehr && ehr.getEntity() == entity ? ifTarget : main);
+        Color outer = entity instanceof LivingEntity le && le.hurtTime != 0 && hurtCol ? ifHurt : main;
         int i = outer.getRGB();
         if (outlineEnabled) {
             GizmoDrawing.box(entity.getBoundingBox().offset(vec3d3), DrawStyle.stroked(outlineColor.getRGB(), lineWidth * outlineMultiplier));
@@ -86,14 +81,12 @@ public abstract class HitBoxRenderMixin {
         Entity entity2 = entity.getVehicle();
         if (entity2 != null) {
             float f = Math.min(entity2.getWidth(), entity.getWidth()) / 2.0F;
-            float g = 0.0625F;
             Vec3d vec3d4 = entity2.getPassengerRidingPos(entity).add(vec3d3);
             GizmoDrawing.box(new Box(vec3d4.x - f, vec3d4.y, vec3d4.z - f, vec3d4.x + f, vec3d4.y + 0.0625, vec3d4.z + f), DrawStyle.stroked(-256, lineWidth));
         }
 
         if (entity instanceof LivingEntity && renderEyeHeight) {
             Box box = entity.getBoundingBox().offset(vec3d3);
-            float g = 0.01F;
             GizmoDrawing.box(
                     new Box(box.minX, box.minY + entity.getStandingEyeHeight() - 0.01F, box.minZ, box.maxX, box.minY + entity.getStandingEyeHeight() + 0.01F, box.maxZ),
                     DrawStyle.stroked(eyeHeight.getRGB(), lineWidth)
